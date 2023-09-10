@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crowding at Tube Stations</title>
+    <meta charset="utf-8">
+
+    <!--importing jquery and chart.js-->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+
+    <style>
+        /* Dropdown Button styling */
+        .dropbtn {
+        background-color: #888b8a;
+        color: white;
+        padding: 1px;
+        font-family: system-ui,-apple-system,system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 14px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .dropbtn:hover{
+            border-color: rgba(0, 0, 0, 0.15);
+            box-shadow: rgba(0, 0, 0, 0.1) 0 4px 12px;
+            color: rgba(0, 0, 0, 0.65);
+        }
+    </style>
+
+    <style>
+        /* Header styling */
+        .header {
+        padding: 45px;
+        text-align: center;
+        background: #bc1a1a;
+        color: white;
+        font-size: 30px;
+        font-family: system-ui,-apple-system,system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;
+        }
+    </style>
+
+    <style>
+        /* Text styling */
+        .text {
+            font-family: system-ui,-apple-system,system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;
+        }
+    </style>
+
+    <style>
+        /* Button styling*/
+        .button{
+        align-items: center;
+        background-color: #888b8a;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-radius: .25rem;
+        box-shadow: rgba(0, 0, 0, 0.02) 0 1px 3px 0;
+        box-sizing: border-box;
+        color: rgba(255, 255, 255, 0.85);
+        cursor: pointer;
+        display: inline-flex;
+        font-family: system-ui,-apple-system,system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        justify-content: center;
+        line-height: 1.25;
+        margin: 0;
+        min-height: 3rem;
+        padding: 1px;
+        position: relative;
+        text-decoration: none;
+        transition: all 250ms;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        vertical-align: baseline;
+        width: auto;
+        }
+
+        .button:hover,
+        .button:focus {
+        border-color: rgba(0, 0, 0, 0.15);
+        box-shadow: rgba(0, 0, 0, 0.1) 0 4px 12px;
+        color: rgba(0, 0, 0, 0.65);
+        }
+    </style>
+
+    <script>function formTable(timeBands,percentageOfBaseLine){
+        /* Creates the table to display all the time bands
+            and crowding percentages of the current station */
+        let tbody = document.getElementsByTagName('tbody')[0];
+
+        /* Sets innerHTML of tbody to empty to remove previous data */
+        tbody.innerHTML = "";
+        
+        let firstRow = tbody.insertRow();
+        let FirstCell1 = firstRow.insertCell();
+        let FirstCell2 = firstRow.insertCell();
+        FirstCell1.appendChild(document.createTextNode('Time'));
+        FirstCell2.appendChild(document.createTextNode('Crowding'));
+
+        for (let i = 0; i < timeBands.length; i++){
+            let newRow = tbody.insertRow();
+            let newCell1 = newRow.insertCell();
+            let newCell2 = newRow.insertCell();
+            newCell1.style.textAlign = "center";
+            newCell2.style.textAlign = "center";
+            newCell1.appendChild(document.createTextNode(timeBands[i]));
+            newCell2.appendChild(document.createTextNode(percentageOfBaseLine[i]));
+        }
+    }
+    </script>
+
+    <script>function displayPEAK(AM, PM){
+        /* Displays the peak AM and PM times for the
+            current station and current day */
+        document.getElementById('AMpeakTime').innerHTML = 'Peak AM time is: '+ AM;
+        document.getElementById('PMpeakTime').innerHTML = 'Peak PM time is: ' + PM;
+    }
+    </script>
+
+    <script>function getBarChartColours(crowding){
+        /* Returns an array of colours for each time band
+            based on the crowding percentage. The higher the
+            crowding percentage the brighter the shade of red is. */
+            let max = 0;
+            for (let i = 0; i < crowding.length; i++){
+                if (crowding[i]>max){
+                    max = crowding[i];
+                }
+            }
+            let incrementalValue = Math.round(255/max);
+            let arrayOfColours = [];
+            
+            for (let i = 0; i < crowding.length; i++){
+                arrayOfColours.push('rgba(' + (crowding[i]*incrementalValue).toString() + ',0,0,1)');
+            }
+            return arrayOfColours;
+        }
+    </script>
+
+    <script>function formBarChart(myJson){
+        /* Creates a bar chart from the data retrieved from the
+            JSON file. Also calls the displayPEAK, formTable function */
+            let chart_area = document.getElementById("chartArea");
+
+            /* Removes previous data that may have been displayed
+                on the screen */
+            let child = chart_area.lastElementChild; 
+            while (child) {
+                chart_area.removeChild(child);
+                child = chart_area.lastElementChild;
+            }
+
+            let canvas = document.createElement('canvas');
+            canvas.id = "barChart";
+            canvas.width  = $(window).width(); 
+            canvas.height = 330;
+
+            displayPEAK(myJson.amPeakTimeBand, myJson.pmPeakTimeBand);
+            let timeBands = myJson.timeBands;
+
+            labels = timeBands.map((x)=>x.timeBand);
+            let crowding = timeBands.map((x)=>(Math.trunc(x.percentageOfBaseLine*100)));
+
+            let barChartColours = getBarChartColours(crowding);
+
+            /* Creates bar chart of data */
+            let myChart = new Chart(canvas, {
+                type: "bar",
+                data: {
+                    labels:labels,
+                    datasets: [{
+                        label:"Crowding",
+                        backgroundColor: barChartColours,
+                        data:crowding
+                    }]
+                },
+                options : {
+                    scales:{
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Crowding %'
+                            },
+                            max: 100,
+                            min: 0
+                        },
+                        x:{
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        }
+                    }
+                }
+            });
+            /* Appends bar chart as a child to the canvas */
+            chart_area.appendChild(canvas);
+            formTable(labels,crowding);
+        }
+    </script>
+
+    <script>function viewCrowding(){
+        /*  The following block of code removes the greeting messages from the
+            screen and displays more default headers.*/
+            let greetingMessage = document.getElementById("greetingMessage");
+            greetingMessage.style.display = "none";
+            let mainHeader = document.getElementById("mainHeader");
+            mainHeader.style.display = "block";
+        /* Creates a request for retrieving the data from the TFL API.
+            Once the request is ready, there's a function call to 
+            formBarChart */
+            const xhttp = new XMLHttpRequest();
+
+            /* When the request is ready */
+            xhttp.onreadystatechange = function(){
+                if(this.readyState == 4 && this.status == 200){
+                    /* If the request is ready and status code of success 200 is achieved*/
+                    loadingMSG.style.display = "none";
+                    displayInfo.style.display = "block";
+                    formBarChart(JSON.parse(this.responseText));
+                }
+            }
+            let loadingMSG = document.getElementById("loading");
+            loadingMSG.style.display = "block";
+            let displayInfo = document.getElementById("tableOfCrowdingDiv");
+            displayInfo.style.display = "none";
+            let url = 'https://api.tfl.gov.uk/crowding/'+document.getElementById("Station").value+'/'+document.getElementById("Day").value;
+            xhttp.open("GET", url);
+            xhttp.setRequestHeader("app_key","52317218c42845d3ad4429a39360be55");
+            xhttp.send();
+        }
+    </script>
+
+</head>
+    <body>
+        <!--Main header. This is by default set to not show on display since the greeting message
+            is taking priority at startup-->
+        <h1 class="header" style="text-align:center; display:none;" id="mainHeader">View crowding info at tube stations</h1>
+
+        <!--Greeting messages to be displayed to user. This is removed from
+            display after 'View crowding info' button is pressed-->
+        <div id="greetingMessage">
+            <h1 class="header">View crowding info at tube stations<br></br>Welcome!</h1>
+            <p class="text" style="text-align:center">Please choose a station and day of the week and press 'View crowding info'</p>
+            <hr></hr>
+        </div>
+
+        <!--Station dropdown button-->
+        <label class="text" for="station name">Station:</label>
+        <select class="dropbtn" id = "Station" size="1" autofocus required>
+            <option value="940GZZLUPAC">Paddington</option>
+            <option value="940GZZLUKSX">King`s Cross St Pancras</option>
+            <option value="940GZZLUEUS">Euston</option>
+            <option value="940GZZLUWLO">Waterloo</option>
+            <option value="940GZZLULNB">London Bridge</option>
+            <option value="940GZZLULVT">Liverpool Street</option>
+        </select>
+
+        <!--Day of week dropdown button-->
+        <label class="text" for="day of week">Day of week:</label>
+        <select class="dropbtn" id = "Day" size="1" required>
+            <option value="mon">Monday</option>
+            <option value="tue">Tuesday</option>
+            <option value="wed">Wednesday</option>
+            <option value="thu">Thursday</option>
+            <option value="fri">Friday</option>
+            <option value="sat">Saturday</option>
+            <option value="sun">Sunday</option>
+        </select>
+
+        <!--'View crowding info' button- calls viewCrowding() function when clicked-->
+        <button class="button" id="go" onclick="viewCrowding();">View crowding info!</button><br>
+
+        <!--Loading text, used only when retieving data from TFL API-->
+        <p class="text" style="text-align:center;display:none" id="loading">Loading...</p>
+
+        <!--Div for: Peak AM&PM times and table of crowding. By default, is not shown
+            on display on account of greeting message getting priority.-->
+        <div style="display:none" id="tableOfCrowdingDiv">
+            <div id="chartArea"></div>
+
+            <div class = "text" id="AMpeakTime" style="text-align:center"></div>
+            <div class = "text" id="PMpeakTime" style="text-align:center"></div>
+
+            <h1 class="header" style="text-align:center ;">Table of Crowding</h1>
+
+            <table style="margin-left:auto;margin-right:auto;" border="3" id="tableOfCrowding">
+                <tbody></tbody>
+            </table>
+        </div>
+    </body> 
+</html>
